@@ -1,21 +1,19 @@
 """
 scheduler_rules.py
 ------------------
-Defines which pipelines should run based on the current date and
-the DATA_REFRESH_POLICY from config.py.
+Defines which pipelines should run based on the current date.
 """
 
 from datetime import date
-from config import DATA_REFRESH_POLICY
 
 
 def should_run_daily() -> bool:
-    """Return True on any business day."""
-    return date.today().weekday() < 5  # Mon–Fri
+    """Return True on any business day (Mon-Fri)."""
+    return date.today().weekday() < 5
 
 
 def should_run_weekly() -> bool:
-    """Return True on Monday (start of the trading week)."""
+    """Return True on Monday."""
     return date.today().weekday() == 0
 
 
@@ -26,8 +24,12 @@ def should_run_monthly() -> bool:
 
 
 def should_run_quarterly() -> bool:
-    """
-    Return True during earnings season windows:
-    January, April, July, October.
-    """
+    """Return True during earnings season: January, April, July, October."""
     return date.today().month in (1, 4, 7, 10)
+
+
+def print_schedule_status() -> None:
+    print(f"Daily pipeline:     {'YES' if should_run_daily() else 'no'}")
+    print(f"Weekly pipeline:    {'YES' if should_run_weekly() else 'no'}")
+    print(f"Monthly pipeline:   {'YES' if should_run_monthly() else 'no'}")
+    print(f"Quarterly pipeline: {'YES' if should_run_quarterly() else 'no'}")
