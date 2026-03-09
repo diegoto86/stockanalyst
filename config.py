@@ -5,17 +5,39 @@ Central configuration for the StockAnalyst swing trading system.
 Edit this file to adjust universe, risk parameters, and refresh policies.
 """
 
+import csv
+from pathlib import Path
+
 # ---------------------------------------------------------------------------
 # Universe
 # ---------------------------------------------------------------------------
 
-# Seed list of tickers to track. Extend or replace as needed.
-UNIVERSE_TICKERS = [
+# Fallback seed list (used when data/universe_tickers.csv does not exist).
+# Run jobs/build_universe.py to generate a broader universe automatically.
+_SEED_TICKERS = [
     "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL",
     "META", "TSM", "AVGO", "ASML", "AMD",
     "JPM", "V", "MA", "UNH", "LLY",
     "XOM", "CVX", "HD", "PG", "KO",
 ]
+
+_UNIVERSE_CSV = Path(__file__).parent / "data" / "universe_tickers.csv"
+
+
+def _load_universe() -> list:
+    if _UNIVERSE_CSV.exists():
+        try:
+            with open(_UNIVERSE_CSV, newline="") as f:
+                reader = csv.DictReader(f)
+                tickers = [row["ticker"].strip() for row in reader if row.get("ticker", "").strip()]
+            if tickers:
+                return tickers
+        except Exception:
+            pass
+    return _SEED_TICKERS
+
+
+UNIVERSE_TICKERS = _load_universe()
 
 # Market context indices
 INDEX_TICKERS = ["SPY", "QQQ", "IWM"]

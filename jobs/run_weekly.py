@@ -38,11 +38,18 @@ def _size_ok(market_cap: float | None) -> bool:
     return market_cap >= MIN_MARKET_CAP
 
 
+def _to_float(val):
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
 def _quality_ok(fund_row: pd.Series) -> bool:
     if fund_row is None or fund_row.empty:
         return True  # no data — allow through, will be filtered later
-    gm = fund_row.get("gross_margin")
-    debt = fund_row.get("net_debt_to_ebitda")
+    gm = _to_float(fund_row.get("gross_margin"))
+    debt = _to_float(fund_row.get("net_debt_to_ebitda"))
     gm_ok = gm is None or gm >= MIN_GROSS_MARGIN
     debt_ok = debt is None or debt <= MAX_NET_DEBT_TO_EBITDA
     return gm_ok and debt_ok
@@ -51,7 +58,7 @@ def _quality_ok(fund_row: pd.Series) -> bool:
 def _valuation_ok(fund_row: pd.Series) -> bool:
     if fund_row is None or fund_row.empty:
         return True
-    pe = fund_row.get("pe_ttm")
+    pe = _to_float(fund_row.get("pe_ttm"))
     return pe is None or pe <= MAX_PE_TTM
 
 

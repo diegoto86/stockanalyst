@@ -85,9 +85,23 @@ with st.sidebar:
     st.divider()
 
     st.subheader("Run Pipelines")
+    run_universe = st.button("🔍 Build Universe", use_container_width=True, help="Fetch all NYSE/NASDAQ stocks and filter by market cap + volume")
     run_quarterly = st.button("Run Quarterly Pipeline", use_container_width=True)
     run_weekly = st.button("Run Weekly Pipeline", use_container_width=True)
     run_daily = st.button("Run Daily Pipeline", use_container_width=True)
+
+    if run_universe:
+        with st.spinner("Fetching stock universe from NASDAQ screener (this may take ~30s)..."):
+            try:
+                from jobs.build_universe import run as universe_run
+                result = universe_run()
+                if result is not None and not result.empty:
+                    st.success(f"Universe built: {len(result)} stocks saved. Re-run Quarterly pipeline to fetch fundamentals.")
+                    st.rerun()
+                else:
+                    st.error("Universe build failed — check logs.")
+            except Exception as e:
+                st.error(f"Error: {e}")
 
     if run_quarterly:
         with st.spinner("Running quarterly pipeline..."):
