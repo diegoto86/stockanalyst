@@ -1,0 +1,2 @@
+ticker,entry_date,entry_price,shares,initial_stop,current_stop,notes
+AAPL,2024-01-15,185.50,50,178.00,182.00,Example position - delete before use
