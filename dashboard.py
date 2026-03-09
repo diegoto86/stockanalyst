@@ -7,9 +7,15 @@ Run with:
     streamlit run dashboard.py
 """
 
+import os
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent))
+
+# Ensure working directory and sys.path are set to project root
+# (needed for Streamlit Cloud where cwd may differ)
+PROJECT_ROOT = Path(__file__).parent
+os.chdir(PROJECT_ROOT)
+sys.path.insert(0, str(PROJECT_ROOT))
 
 import streamlit as st
 import pandas as pd
@@ -97,7 +103,7 @@ with st.sidebar:
         with st.spinner("Running weekly pipeline..."):
             try:
                 from jobs.run_weekly import run as weekly_run
-                weekly_run()
+                weekly_run(force=True)
                 st.success("Weekly pipeline complete.")
                 st.rerun()
             except Exception as e:

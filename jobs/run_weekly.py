@@ -60,7 +60,7 @@ def _compute_score(liquidity: bool, size: bool, quality: bool, valuation: bool, 
     return round(base * 0.5 + fund_score * 0.5, 3)
 
 
-def run():
+def run(force: bool = False):
     today = date.today().isoformat()
     week_of = (date.today() - timedelta(days=date.today().weekday())).isoformat()
 
@@ -71,8 +71,8 @@ def run():
     init_db()
 
     # Check if already done this week
-    if watchlist_repository.current_week_exists():
-        print("[weekly] Watchlist already up to date for this week. Skipping.")
+    if watchlist_repository.current_week_exists() and not force:
+        print("[weekly] Watchlist already up to date for this week. Skipping. Use force=True to override.")
         return
 
     # Load fundamentals for scoring
