@@ -1,7 +1,7 @@
 """
 dashboard.py
 ------------
-StockAnalyst — Streamlit dashboard.
+StockAnalyst - Streamlit dashboard.
 
 Run with:
     streamlit run dashboard.py
@@ -25,7 +25,7 @@ import streamlit as st
 
 st.set_page_config(
     page_title="StockAnalyst",
-    page_icon="📈",
+    page_icon=":chart_with_upwards_trend:",
     layout="wide",
 )
 
@@ -34,6 +34,7 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 
 from dashboard_sections.sidebar import render_sidebar
+
 config = render_sidebar()
 
 # ---------------------------------------------------------------------------
@@ -41,19 +42,19 @@ config = render_sidebar()
 # ---------------------------------------------------------------------------
 
 from dashboard_sections.sections import (
-    render_market_context,
-    render_signals,
-    render_portfolio,
-    render_watchlist,
     render_earnings,
-    render_sector_exposure,
-    render_price_chart,
-    render_signal_history,
+    render_market_context,
     render_performance,
+    render_portfolio,
+    render_price_chart,
+    render_sector_exposure,
+    render_signal_history,
+    render_signals,
+    render_watchlist,
 )
 
 st.title("StockAnalyst Dashboard")
-st.caption(f"End-of-day analysis · {config['selected_date'].strftime('%A, %d %B %Y')}")
+st.caption(f"End-of-day analysis | {config['selected_date'].strftime('%A, %d %B %Y')}")
 st.divider()
 
 render_market_context()
@@ -71,6 +72,6 @@ render_performance()
 # ---------------------------------------------------------------------------
 
 st.caption(
-    "StockAnalyst v1.2 · Data via Yahoo Finance · "
-    "No automatic execution — all trades are manual."
+    "StockAnalyst v1.2 | Data via Yahoo Finance | "
+    "No automatic execution - all trades are manual."
 )

@@ -85,7 +85,7 @@ def render_signals(min_score: float, selected_date=None) -> tuple[pd.DataFrame, 
             display_cols = [c for c in ["ticker", "entry_price", "stop_price", "target_price",
                                          "shares", "r_multiple_target", "score", "rationale"]
                             if c in buy_df.columns]
-            st.dataframe(buy_df[display_cols], use_container_width=True, hide_index=True)
+            st.dataframe(buy_df[display_cols], width="stretch", hide_index=True)
             st.caption(f"{len(buy_df)} candidate(s) · {date_label}")
         else:
             if is_today:
@@ -101,9 +101,9 @@ def render_signals(min_score: float, selected_date=None) -> tuple[pd.DataFrame, 
                             if c in sell_df.columns]
             if "action" in sell_df.columns:
                 styled = sell_df[display_cols].style.map(color_action, subset=["action"])
-                st.dataframe(styled, use_container_width=True, hide_index=True)
+                st.dataframe(styled, width="stretch", hide_index=True)
             else:
-                st.dataframe(sell_df[display_cols], use_container_width=True, hide_index=True)
+                st.dataframe(sell_df[display_cols], width="stretch", hide_index=True)
             st.caption(f"{len(sell_df)} position(s) reviewed · {date_label}")
         else:
             if is_today:
@@ -128,7 +128,7 @@ def render_portfolio() -> pd.DataFrame:
         col_table, col_chart = st.columns([2, 1])
 
         with col_table:
-            st.dataframe(portfolio_df, use_container_width=True, hide_index=True)
+            st.dataframe(portfolio_df, width="stretch", hide_index=True)
             st.caption(f"{len(portfolio_df)} open position(s)")
 
         with col_chart:
@@ -146,7 +146,7 @@ def render_portfolio() -> pd.DataFrame:
                     margin=dict(t=40, b=0, l=0, r=0),
                     height=300,
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch")
     else:
         empty_state(
             "No open positions found.\n\n"
@@ -173,7 +173,7 @@ def render_watchlist():
             display_cols = [c for c in ["ticker", "score", "liquidity_ok", "size_ok",
                                          "quality_ok", "valuation_ok"] if c in watchlist_df.columns]
             st.dataframe(watchlist_df[display_cols].sort_values("score", ascending=False),
-                         use_container_width=True, hide_index=True)
+                         width="stretch", hide_index=True)
             st.caption(f"{len(watchlist_df)} tickers in this week's universe")
         else:
             empty_state("No watchlist yet. Run the weekly pipeline.")
@@ -186,7 +186,7 @@ def render_earnings():
     st.subheader("Upcoming Earnings")
     earnings_df = load_csv(EARNINGS_FILE, "earnings calendar")
     if not earnings_df.empty:
-        st.dataframe(earnings_df.sort_values("earnings_date"), use_container_width=True, hide_index=True)
+        st.dataframe(earnings_df.sort_values("earnings_date"), width="stretch", hide_index=True)
     else:
         empty_state("No earnings data yet. Run the daily pipeline.")
     st.divider()
@@ -219,7 +219,7 @@ def render_sector_exposure(portfolio_df: pd.DataFrame):
                 margin=dict(t=40, b=0, l=0, r=0),
                 height=300,
             )
-            st.plotly_chart(fig_sec, use_container_width=True)
+            st.plotly_chart(fig_sec, width="stretch")
 
         with col_sec_table:
             if not portfolio_df.empty and "ticker" in portfolio_df.columns:
@@ -234,15 +234,15 @@ def render_sector_exposure(portfolio_df: pd.DataFrame):
                             sector_value["pct"] = (sector_value["value"] / sector_value["value"].sum() * 100).round(1)
                             sector_value.columns = ["Sector", "Value ($)", "Exposure (%)"]
                             st.markdown("**Portfolio sector exposure**")
-                            st.dataframe(sector_value, use_container_width=True, hide_index=True)
+                            st.dataframe(sector_value, width="stretch", hide_index=True)
                         else:
-                            st.dataframe(sector_counts, use_container_width=True, hide_index=True)
+                            st.dataframe(sector_counts, width="stretch", hide_index=True)
                     except Exception:
-                        st.dataframe(sector_counts, use_container_width=True, hide_index=True)
+                        st.dataframe(sector_counts, width="stretch", hide_index=True)
                 else:
-                    st.dataframe(sector_counts, use_container_width=True, hide_index=True)
+                    st.dataframe(sector_counts, width="stretch", hide_index=True)
             else:
-                st.dataframe(sector_counts, use_container_width=True, hide_index=True)
+                st.dataframe(sector_counts, width="stretch", hide_index=True)
     else:
         empty_state("No sector data yet. Run the daily pipeline (sector requires universe_tickers.csv).")
 
@@ -331,7 +331,7 @@ def render_price_chart(buy_df: pd.DataFrame, portfolio_df: pd.DataFrame):
                     height=450,
                     margin=dict(t=40, b=40, l=60, r=20),
                 )
-                st.plotly_chart(fig_price, use_container_width=True)
+                st.plotly_chart(fig_price, width="stretch")
             else:
                 empty_state(f"No price data for {selected_ticker}. Run the daily pipeline.")
         else:
@@ -383,7 +383,7 @@ def render_signal_history():
                 if not hist_buy.empty:
                     display_cols = [c for c in ["ticker", "entry_price", "stop_price", "target_price",
                                                  "score", "rationale"] if c in hist_buy.columns]
-                    st.dataframe(hist_buy[display_cols], use_container_width=True, hide_index=True)
+                    st.dataframe(hist_buy[display_cols], width="stretch", hide_index=True)
                 else:
                     st.caption("No buy candidates on this date.")
 
@@ -394,7 +394,7 @@ def render_signal_history():
                     display_cols = [c for c in ["ticker", "action", "current_price", "current_stop",
                                                  "new_stop", "sell_pct", "current_r", "rationale"]
                                     if c in hist_sell.columns]
-                    st.dataframe(hist_sell[display_cols], use_container_width=True, hide_index=True)
+                    st.dataframe(hist_sell[display_cols], width="stretch", hide_index=True)
                 else:
                     st.caption("No sell actions on this date.")
         else:
@@ -439,7 +439,7 @@ def render_performance():
                                              "return_pct", "hit_target", "hit_stop", "max_gain_pct",
                                              "max_drawdown_pct", "days_held"]
                                 if c in outcomes_df.columns]
-                st.dataframe(outcomes_df[display_cols], use_container_width=True, hide_index=True)
+                st.dataframe(outcomes_df[display_cols], width="stretch", hide_index=True)
         else:
             empty_state("No performance data yet. Run the daily pipeline to evaluate past signals.")
     except Exception as e:
