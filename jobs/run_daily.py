@@ -139,6 +139,7 @@ def run():
     # 8. BUY engine
     print("[daily] Running BUY engine...")
     technicals_latest = technical_repository.load_technical_snapshot()
+    sector_map = _load_sector_map()
     candidates = buy_engine.run(
         watchlist=watchlist,
         technicals=technicals_latest,
@@ -147,10 +148,10 @@ def run():
         market_context=market_ctx,
         portfolio=portfolio,
         earnings_calendar=earnings_df if not earnings_df.empty else None,
+        sector_map=sector_map,
     )
     if not candidates.empty:
-        # Enrich with sector data
-        sector_map = _load_sector_map()
+        # Enrich with sector column for display
         candidates["sector"] = candidates["ticker"].map(sector_map).fillna("Unknown")
         candidates.to_csv(f"{DATA_DIR}/buy_candidates_daily.csv", index=False)
         signal_repository.save_buy_candidates(candidates)

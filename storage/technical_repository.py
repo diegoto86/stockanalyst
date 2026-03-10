@@ -18,19 +18,24 @@ def save_technical_snapshot(df: pd.DataFrame) -> None:
     if df.empty:
         return
     conn = get_connection()
+    # Ensure close column exists (backwards-compatible with older DataFrames)
+    if "close" not in df.columns:
+        df = df.copy()
+        df["close"] = None
     with conn:
         conn.executemany(
             """
             INSERT INTO technical_snapshot_daily
-                (ticker, date, ma20, ma50, ma200, rsi14, atr14, pullback_pct, trend_state, setup_flags)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (ticker, date, close, ma20, ma50, ma200, rsi14, atr14, pullback_pct, trend_state, setup_flags)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(ticker, date) DO UPDATE SET
+                close=excluded.close,
                 ma20=excluded.ma20, ma50=excluded.ma50, ma200=excluded.ma200,
                 rsi14=excluded.rsi14, atr14=excluded.atr14,
                 pullback_pct=excluded.pullback_pct,
                 trend_state=excluded.trend_state, setup_flags=excluded.setup_flags
             """,
-            df[["ticker", "date", "ma20", "ma50", "ma200", "rsi14", "atr14",
+            df[["ticker", "date", "close", "ma20", "ma50", "ma200", "rsi14", "atr14",
                 "pullback_pct", "trend_state", "setup_flags"]].values.tolist(),
         )
         conn.execute(

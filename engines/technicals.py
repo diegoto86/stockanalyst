@@ -130,15 +130,15 @@ def compute_technicals(price_df: pd.DataFrame) -> pd.DataFrame:
         snapshot["trend_state"] = snapshot.apply(_trend_state, axis=1)
         snapshot["setup_flags"] = snapshot.apply(_setup_flags, axis=1)
 
-        # Keep only the last row (latest day)
-        latest = snapshot.iloc[[-1]].drop(columns=["close"])
+        # Keep only the last row (latest day) — preserve close for engines
+        latest = snapshot.iloc[[-1]]
         records.append(latest)
 
     if not records:
         return pd.DataFrame()
 
     result = pd.concat(records, ignore_index=True)
-    cols = ["ticker", "date", "ma20", "ma50", "ma200", "rsi14", "atr14", "pullback_pct", "trend_state", "setup_flags"]
+    cols = ["ticker", "date", "close", "ma20", "ma50", "ma200", "rsi14", "atr14", "pullback_pct", "trend_state", "setup_flags"]
     return result[cols]
 
 
@@ -186,12 +186,12 @@ def compute_technicals_full_history(price_df: pd.DataFrame) -> pd.DataFrame:
 
         snapshot["trend_state"] = snapshot.apply(_trend_state, axis=1)
         snapshot["setup_flags"] = snapshot.apply(_setup_flags, axis=1)
-        snapshot = snapshot.drop(columns=["close"]).dropna(subset=["ma20"])
+        snapshot = snapshot.dropna(subset=["ma20"])
         records.append(snapshot)
 
     if not records:
         return pd.DataFrame()
 
     result = pd.concat(records, ignore_index=True)
-    cols = ["ticker", "date", "ma20", "ma50", "ma200", "rsi14", "atr14", "pullback_pct", "trend_state", "setup_flags"]
+    cols = ["ticker", "date", "close", "ma20", "ma50", "ma200", "rsi14", "atr14", "pullback_pct", "trend_state", "setup_flags"]
     return result[cols]

@@ -104,9 +104,8 @@ def run(
         rsi = float(tech.get("rsi14", 50) or 50) if has_tech else 50
         ma50 = float(tech.get("ma50", 0) or 0) if has_tech else 0
 
-        # Approximate current price from MA20 (in real pipeline this comes from latest close)
-        ma20 = float(tech.get("ma20", entry_price) or entry_price) if has_tech else entry_price
-        current_price = ma20  # proxy — will be replaced by actual close in full impl.
+        # Use actual close price from technicals snapshot
+        current_price = float(tech.get("close") or tech.get("ma20", entry_price) or entry_price) if has_tech else entry_price
 
         current_r = _r_multiple(entry_price, current_price, current_stop)
         new_stop = current_stop

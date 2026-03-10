@@ -149,14 +149,17 @@ def get_signal_summary() -> pd.DataFrame:
     conn = get_connection()
     df = pd.read_sql_query("""
         SELECT
-            COALESCE(b.date, s.date) AS date,
-            COALESCE(b.buy_count, 0) AS buy_count,
-            COALESCE(s.sell_count, 0) AS sell_count
-        FROM
-            (SELECT date, COUNT(*) AS buy_count FROM buy_candidates_daily GROUP BY date) b
-        FULL OUTER JOIN
-            (SELECT date, COUNT(*) AS sell_count FROM sell_actions_daily GROUP BY date) s
-        ON b.date = s.date
+            date,
+            SUM(buy_count) AS buy_count,
+            SUM(sell_count) AS sell_count
+        FROM (
+            SELECT date, COUNT(*) AS buy_count, 0 AS sell_count
+            FROM buy_candidates_daily GROUP BY date
+            UNION ALL
+            SELECT date, 0 AS buy_count, COUNT(*) AS sell_count
+            FROM sell_actions_daily GROUP BY date
+        )
+        GROUP BY date
         ORDER BY date DESC
         LIMIT 60
     """, conn)

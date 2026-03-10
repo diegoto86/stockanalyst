@@ -114,6 +114,43 @@ def _has_earnings_soon(ticker: str, earnings_df: pd.DataFrame, days: int = 7) ->
     return delta <= days
 
 
+def _enforce_sector_exposure(
+    candidates: pd.DataFrame,
+    portfolio: pd.DataFrame,
+    sector_map: dict,
+    max_exposure: float,
+    max_positions: int,
+) -> pd.DataFrame:
+    """
+    Filter candidates so no single sector exceeds max_exposure of total slots.
+    Considers both existing portfolio positions and new candidates.
+    """
+    if candidates.empty or not sector_map:
+        return candidates
+
+    max_per_sector = max(1, int(max_positions * max_exposure))
+
+    # Count existing portfolio positions per sector
+    sector_counts = {}
+    if portfolio is not None and not portfolio.empty:
+        for _, pos in portfolio.iterrows():
+            sec = sector_map.get(pos["ticker"], "Unknown")
+            sector_counts[sec] = sector_counts.get(sec, 0) + 1
+
+    # Filter candidates respecting sector limits
+    kept = []
+    for _, row in candidates.iterrows():
+        sec = sector_map.get(row["ticker"], "Unknown")
+        current = sector_counts.get(sec, 0)
+        if current < max_per_sector:
+            kept.append(row)
+            sector_counts[sec] = current + 1
+
+    if not kept:
+        return pd.DataFrame()
+    return pd.DataFrame(kept).reset_index(drop=True)
+
+
 def run(
     watchlist: pd.DataFrame,
     technicals: pd.DataFrame,
@@ -122,6 +159,7 @@ def run(
     market_context: dict,
     portfolio: pd.DataFrame,
     earnings_calendar: pd.DataFrame = None,
+    sector_map: dict = None,
     account_size: float = ACCOUNT_SIZE,
     max_positions: int = MAX_POSITIONS,
     max_risk_per_trade: float = MAX_RISK_PER_TRADE,
@@ -206,14 +244,12 @@ def run(
             continue
 
         # Use last close as entry proxy (user confirms entry)
-        ma20 = tech.get("ma20")
+        close = tech.get("close")
         ma50 = tech.get("ma50")
-        if ma20 is None or ma50 is None:
+        if close is None or ma50 is None:
             continue
 
-        # Entry: approximate from MA20 + pullback context
-        # In practice user will see the level and decide
-        entry_price = round(ma20 * (1 - pullback * 0.5), 2)  # estimated entry near current price
+        entry_price = round(float(close), 2)
         stop_price = round(entry_price - ATR_STOP_MULTIPLIER * atr, 2)
         target_price = round(entry_price + MIN_R_MULTIPLE_TARGET * ATR_STOP_MULTIPLIER * atr, 2)
 
@@ -259,4 +295,12 @@ def run(
 
     result = pd.DataFrame(candidates)
     result = result.sort_values("score", ascending=False).head(available_slots)
-    return result.reset_index(drop=True)
+    result = result.reset_index(drop=True)
+
+    # Enforce sector exposure limits
+    if sector_map:
+        result = _enforce_sector_exposure(
+            result, portfolio, sector_map, MAX_SECTOR_EXPOSURE, max_positions,
+        )
+
+    return result

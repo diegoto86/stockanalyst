@@ -41,6 +41,7 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS technical_snapshot_daily (
                 ticker          TEXT NOT NULL,
                 date            TEXT NOT NULL,
+                close           REAL,
                 ma20            REAL,
                 ma50            REAL,
                 ma200           REAL,
@@ -135,6 +136,7 @@ def init_db() -> None:
 
     # --- Schema migrations for existing databases ---
     _migrate_sell_actions(conn)
+    _migrate_technicals(conn)
 
     conn.close()
 
@@ -153,3 +155,12 @@ def _migrate_sell_actions(conn: sqlite3.Connection):
         if col not in existing_cols:
             conn.execute(f"ALTER TABLE sell_actions_daily ADD COLUMN {col} {dtype}")
     conn.commit()
+
+
+def _migrate_technicals(conn: sqlite3.Connection):
+    """Add close column to technical_snapshot_daily if upgrading from older schema."""
+    cursor = conn.execute("PRAGMA table_info(technical_snapshot_daily)")
+    existing_cols = {row[1] for row in cursor.fetchall()}
+    if "close" not in existing_cols:
+        conn.execute("ALTER TABLE technical_snapshot_daily ADD COLUMN close REAL")
+        conn.commit()
