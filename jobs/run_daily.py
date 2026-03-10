@@ -77,16 +77,19 @@ def run():
     # 0. Init DB
     init_db()
 
-    # 1. Prices
-    print("[daily] Fetching price bars...")
-    price_df = yahoo_prices.fetch_daily_bars(UNIVERSE_TICKERS, period="1y")
-    if not price_df.empty:
-        price_repository.save_price_bars(price_df)
-        print(f"[daily] Saved {len(price_df)} price records.")
+    # 1. Prices (skip if fresh)
+    if needs_refresh("prices_daily", price_repository.get_last_updated()):
+        print("[daily] Fetching price bars...")
+        price_df = yahoo_prices.fetch_daily_bars(UNIVERSE_TICKERS, period="1y")
+        if not price_df.empty:
+            price_repository.save_price_bars(price_df)
+            print(f"[daily] Saved {len(price_df)} price records.")
+        else:
+            print("[daily] WARNING: No price data received.")
     else:
-        print("[daily] WARNING: No price data received.")
+        print("[daily] Prices are fresh — skipping fetch.")
 
-    # 1b. Index prices for market context
+    # 1b. Index prices for market context (always fetch — lightweight)
     print("[daily] Fetching index prices...")
     index_df = yahoo_prices.fetch_index_prices(INDEX_TICKERS + ["^VIX"])
     market_ctx = _market_context(index_df)
@@ -97,25 +100,31 @@ def run():
         Path(DATA_DIR).mkdir(exist_ok=True)
         index_df.to_csv(f"{DATA_DIR}/market_context.csv", index=False)
 
-    # 2. Technicals
-    print("[daily] Computing technical indicators...")
-    all_prices = price_repository.load_price_bars(tickers=UNIVERSE_TICKERS)
-    if not all_prices.empty:
-        technicals_df = compute_technicals(all_prices)
-        if not technicals_df.empty:
-            technical_repository.save_technical_snapshot(technicals_df)
-            print(f"[daily] Saved technicals for {len(technicals_df)} tickers.")
+    # 2. Technicals (skip if fresh)
+    if needs_refresh("technical_snapshot", technical_repository.get_last_updated()):
+        print("[daily] Computing technical indicators...")
+        all_prices = price_repository.load_price_bars(tickers=UNIVERSE_TICKERS)
+        if not all_prices.empty:
+            technicals_df = compute_technicals(all_prices)
+            if not technicals_df.empty:
+                technical_repository.save_technical_snapshot(technicals_df)
+                print(f"[daily] Saved technicals for {len(technicals_df)} tickers.")
+        else:
+            technicals_df = technical_repository.load_technical_snapshot()
     else:
-        technicals_df = technical_repository.load_technical_snapshot()
+        print("[daily] Technicals are fresh — skipping computation.")
 
-    # 3. News
-    print("[daily] Fetching news...")
-    news_df = yahoo_news.fetch_news(UNIVERSE_TICKERS, days_back=5)
-    if not news_df.empty:
-        news_repository.save_news(news_df)
-        print(f"[daily] Saved {len(news_df)} news items.")
+    # 3. News (skip if fresh)
+    if needs_refresh("news_events", news_repository.get_last_updated()):
+        print("[daily] Fetching news...")
+        news_df = yahoo_news.fetch_news(UNIVERSE_TICKERS, days_back=5)
+        if not news_df.empty:
+            news_repository.save_news(news_df)
+            print(f"[daily] Saved {len(news_df)} news items.")
+    else:
+        print("[daily] News is fresh — skipping fetch.")
 
-    # 4. Earnings calendar
+    # 4. Earnings calendar (always fetch — lightweight + time-sensitive)
     print("[daily] Fetching earnings calendar...")
     earnings_df = yahoo_events.fetch_earnings_calendar(UNIVERSE_TICKERS)
     if not earnings_df.empty:
@@ -175,6 +184,15 @@ def run():
         print(f"[daily] {len(actions)} sell action(s) generated and persisted.")
     else:
         print("[daily] No sell actions today.")
+
+    # 10. Evaluate past signal performance
+    print("[daily] Evaluating signal performance...")
+    from engines.signal_evaluator import evaluate_signals
+    outcomes = evaluate_signals(lookback_days=30)
+    if not outcomes.empty:
+        print(f"[daily] Evaluated {len(outcomes)} past signal(s).")
+    else:
+        print("[daily] No past signals to evaluate yet.")
 
     print(f"[daily] Pipeline complete — {today}\n")
 

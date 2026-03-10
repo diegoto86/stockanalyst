@@ -127,6 +127,24 @@ def init_db() -> None:
                 PRIMARY KEY (ticker, date)
             );
 
+            -- Signal outcome tracking: how did past buy signals perform?
+            CREATE TABLE IF NOT EXISTS signal_outcomes (
+                ticker          TEXT NOT NULL,
+                signal_date     TEXT NOT NULL,
+                entry_price     REAL,
+                eval_date       TEXT NOT NULL,
+                days_held       INTEGER,
+                price_at_eval   REAL,
+                return_pct      REAL,
+                hit_target      INTEGER DEFAULT 0,
+                hit_stop        INTEGER DEFAULT 0,
+                max_gain_pct    REAL,
+                max_drawdown_pct REAL,
+                target_price    REAL,
+                stop_price      REAL,
+                PRIMARY KEY (ticker, signal_date, eval_date)
+            );
+
             -- Metadata: track last update time per dataset
             CREATE TABLE IF NOT EXISTS refresh_log (
                 dataset     TEXT PRIMARY KEY,

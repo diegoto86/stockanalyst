@@ -26,35 +26,91 @@ from config import (
 )
 
 
-def _score_setup(tech_row: pd.Series, fund_row: pd.Series | None) -> float:
+def _score_setup(tech_row: pd.Series, fund_row: pd.Series | None) -> dict:
     """
-    Compute a 0-1 setup score combining technical + fundamental signals.
+    Compute a 0-1 setup score with explicit subscores for transparency.
+
+    Returns dict with 'total' and individual subscores.
+
+    Subscores (continuous, not binary):
+        pullback  (0-0.15): sweet spot 3-8% pullback scores highest
+        rsi       (0-0.15): lower RSI (more reset) scores higher
+        ma_align  (0-0.20): above MA50 + above MA200, bonus for proximity
+        trend     (0-0.10): uptrend > mixed > other
+        fundament (0-0.30): fundamental_score scaled
+        news      (0-0.10): applied externally via news_penalty
     """
-    score = 0.0
+    subscores = {}
 
-    # Technical signals (60% of score)
-    flags = str(tech_row.get("setup_flags", "")).split(",")
-    if "pullback_ok" in flags:
-        score += 0.20
-    if "rsi_reset" in flags:
-        score += 0.15
-    if "above_ma50" in flags:
-        score += 0.15
-    if "above_ma200" in flags:
-        score += 0.10
+    # --- Pullback quality (0-0.15) ---
+    # Sweet spot: 3-8% pullback. Too shallow = chasing, too deep = broken.
+    pullback = tech_row.get("pullback_pct")
+    if pullback is not None and not np.isnan(pullback):
+        if 0.03 <= pullback <= 0.08:
+            subscores["pullback"] = 0.15  # ideal zone
+        elif 0 < pullback < 0.03:
+            subscores["pullback"] = round(0.15 * (pullback / 0.03), 3)  # shallow
+        elif 0.08 < pullback <= PULLBACK_MAX_PCT:
+            # Linear decay from 0.15 to 0.05
+            ratio = (pullback - 0.08) / (PULLBACK_MAX_PCT - 0.08)
+            subscores["pullback"] = round(0.15 - ratio * 0.10, 3)
+        else:
+            subscores["pullback"] = 0.0
+    else:
+        subscores["pullback"] = 0.0
 
+    # --- RSI quality (0-0.15) ---
+    # Lower RSI = more reset = better entry. Scale: 30->0.15, 55->0.05, 70->0.0
+    rsi = tech_row.get("rsi14")
+    if rsi is not None and not np.isnan(rsi):
+        if rsi <= 30:
+            subscores["rsi"] = 0.15
+        elif rsi < 55:
+            subscores["rsi"] = round(0.15 * (55 - rsi) / 25, 3)
+        else:
+            subscores["rsi"] = 0.0
+    else:
+        subscores["rsi"] = 0.0
+
+    # --- MA alignment (0-0.20) ---
+    close = tech_row.get("close")
+    ma50 = tech_row.get("ma50")
+    ma200 = tech_row.get("ma200")
+
+    ma_score = 0.0
+    if close and ma50 and not np.isnan(ma50) and ma50 > 0:
+        if close > ma50:
+            # Base 0.08, bonus up to 0.02 for being close to MA50 (support nearby)
+            dist_pct = (close - ma50) / ma50
+            proximity_bonus = max(0, 0.02 - dist_pct * 0.1)
+            ma_score += 0.08 + round(proximity_bonus, 3)
+    if close and ma200 and not np.isnan(ma200) and ma200 > 0:
+        if close > ma200:
+            ma_score += 0.10
+    subscores["ma_align"] = round(min(ma_score, 0.20), 3)
+
+    # --- Trend (0-0.10) ---
     trend = tech_row.get("trend_state", "")
     if trend == "uptrend":
-        score += 0.10
+        subscores["trend"] = 0.10
     elif trend == "mixed":
-        score += 0.05
+        subscores["trend"] = 0.05
+    else:
+        subscores["trend"] = 0.0
 
-    # Fundamental signals (40% of score)
+    # --- Fundamental (0-0.30) ---
     if fund_row is not None and not fund_row.empty:
-        fund_score = fund_row.get("fundamental_score", 0) or 0
-        score += fund_score * 0.40
+        fs = fund_row.get("fundamental_score", 0) or 0
+        subscores["fundament"] = round(float(fs) * 0.30, 3)
+    else:
+        subscores["fundament"] = 0.0
 
-    return round(min(score, 1.0), 3)
+    # News subscore (0-0.10) is applied externally
+    subscores["news"] = 0.10  # full value; reduced by news_penalty multiplier later
+
+    total = sum(subscores.values())
+    subscores["total"] = round(min(total, 1.0), 3)
+    return subscores
 
 
 def _compute_position_size(
@@ -264,18 +320,23 @@ def run(
         if shares == 0:
             continue
 
-        # Score
+        # Score (returns dict with subscores)
         fund_row = fund_lookup.get(ticker)
-        setup_score = _score_setup(tech, pd.Series(fund_row) if isinstance(fund_row, dict) else fund_row)
-        setup_score = round(setup_score * news_penalty, 3)
+        subscores = _score_setup(tech, pd.Series(fund_row) if isinstance(fund_row, dict) else fund_row)
 
-        # Build rationale
+        # Apply news penalty to the news subscore
+        subscores["news"] = round(subscores["news"] * news_penalty, 3)
+        setup_score = round(min(sum(v for k, v in subscores.items() if k != "total"), 1.0), 3)
+
+        # Build rationale with subscore breakdown
         flags = tech.get("setup_flags", "")
-        rationale_parts = [f"trend={trend}", f"rsi={round(rsi, 1) if rsi else 'n/a'}", f"pullback={round(pullback*100,1)}%", f"flags=[{flags}]"]
-        if fund_row is not None:
-            fs = fund_row.get("fundamental_score") if isinstance(fund_row, dict) else getattr(fund_row, "fundamental_score", None)
-            if fs:
-                rationale_parts.append(f"fund_score={round(fs, 2)}")
+        subscore_str = " ".join(f"{k}={v}" for k, v in subscores.items() if k != "total")
+        rationale_parts = [
+            f"trend={trend}",
+            f"rsi={round(rsi, 1) if rsi else 'n/a'}",
+            f"pullback={round(pullback*100,1)}%",
+            f"score=[{subscore_str}]",
+        ]
 
         candidates.append({
             "ticker": ticker,

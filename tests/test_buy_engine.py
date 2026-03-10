@@ -47,49 +47,95 @@ def _market_context(spy_trend: str = "uptrend") -> dict:
 # ---------------------------------------------------------------------------
 
 class TestScoreSetup:
-    def test_all_tech_flags_no_fundamentals(self):
+    def test_returns_dict_with_subscores(self):
         tech = pd.Series({
-            "setup_flags": "pullback_ok,rsi_reset,above_ma50,above_ma200",
+            "close": 100.0, "ma50": 95.0, "ma200": 85.0,
+            "pullback_pct": 0.05, "rsi14": 50.0,
             "trend_state": "uptrend",
-        })
-        score = _score_setup(tech, None)
-        # 0.20 + 0.15 + 0.15 + 0.10 + 0.10 = 0.70
-        assert score == 0.7
-
-    def test_all_flags_with_fundamentals(self):
-        tech = pd.Series({
             "setup_flags": "pullback_ok,rsi_reset,above_ma50,above_ma200",
+        })
+        result = _score_setup(tech, None)
+        assert isinstance(result, dict)
+        assert "total" in result
+        assert "pullback" in result
+        assert "rsi" in result
+        assert "ma_align" in result
+        assert "trend" in result
+        assert "fundament" in result
+        assert "news" in result
+
+    def test_ideal_pullback_scores_max(self):
+        tech = pd.Series({
+            "close": 100.0, "ma50": 95.0, "ma200": 85.0,
+            "pullback_pct": 0.05, "rsi14": 30.0,
             "trend_state": "uptrend",
-        })
-        fund = pd.Series({"fundamental_score": 0.8})
-        score = _score_setup(tech, fund)
-        # tech=0.70 + fund=0.8*0.40=0.32 = 1.02 -> capped at 1.0
-        assert score == 1.0
-
-    def test_partial_flags(self):
-        tech = pd.Series({
-            "setup_flags": "pullback_ok,above_ma50",
-            "trend_state": "mixed",
-        })
-        score = _score_setup(tech, None)
-        # 0.20 + 0.15 + 0.05 = 0.40
-        assert score == 0.4
-
-    def test_no_flags(self):
-        tech = pd.Series({
             "setup_flags": "",
-            "trend_state": "downtrend",
         })
-        score = _score_setup(tech, None)
-        assert score == 0.0
+        result = _score_setup(tech, None)
+        assert result["pullback"] == 0.15  # 5% is in sweet spot
+        assert result["rsi"] == 0.15  # RSI 30 is max
 
-    def test_mixed_trend_bonus(self):
+    def test_shallow_pullback_scores_less(self):
         tech = pd.Series({
+            "close": 100.0, "ma50": 95.0, "ma200": 85.0,
+            "pullback_pct": 0.01, "rsi14": 50.0,
+            "trend_state": "uptrend",
             "setup_flags": "",
-            "trend_state": "mixed",
         })
-        score = _score_setup(tech, None)
-        assert score == 0.05
+        result = _score_setup(tech, None)
+        assert 0 < result["pullback"] < 0.15  # partial score
+
+    def test_high_rsi_scores_zero(self):
+        tech = pd.Series({
+            "close": 100.0, "ma50": 95.0, "ma200": 85.0,
+            "pullback_pct": 0.05, "rsi14": 60.0,
+            "trend_state": "uptrend",
+            "setup_flags": "",
+        })
+        result = _score_setup(tech, None)
+        assert result["rsi"] == 0.0
+
+    def test_fundamentals_add_score(self):
+        tech = pd.Series({
+            "close": 100.0, "ma50": 95.0, "ma200": 85.0,
+            "pullback_pct": 0.05, "rsi14": 40.0,
+            "trend_state": "uptrend",
+            "setup_flags": "",
+        })
+        no_fund = _score_setup(tech, None)
+        with_fund = _score_setup(tech, pd.Series({"fundamental_score": 0.8}))
+        assert with_fund["fundament"] > no_fund["fundament"]
+        assert with_fund["total"] > no_fund["total"]
+
+    def test_different_setups_produce_different_scores(self):
+        """Key test: verify the new scoring differentiates candidates."""
+        strong = pd.Series({
+            "close": 100.0, "ma50": 98.0, "ma200": 85.0,
+            "pullback_pct": 0.05, "rsi14": 35.0,
+            "trend_state": "uptrend",
+            "setup_flags": "",
+        })
+        weak = pd.Series({
+            "close": 100.0, "ma50": 80.0, "ma200": 85.0,
+            "pullback_pct": 0.12, "rsi14": 55.0,
+            "trend_state": "mixed",
+            "setup_flags": "",
+        })
+        strong_score = _score_setup(strong, None)["total"]
+        weak_score = _score_setup(weak, None)["total"]
+        assert strong_score > weak_score
+        assert strong_score != weak_score  # they must differ
+
+    def test_total_capped_at_1(self):
+        tech = pd.Series({
+            "close": 100.0, "ma50": 99.0, "ma200": 85.0,
+            "pullback_pct": 0.05, "rsi14": 25.0,
+            "trend_state": "uptrend",
+            "setup_flags": "",
+        })
+        fund = pd.Series({"fundamental_score": 1.0})
+        result = _score_setup(tech, fund)
+        assert result["total"] <= 1.0
 
 
 # ---------------------------------------------------------------------------
