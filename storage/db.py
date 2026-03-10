@@ -113,12 +113,16 @@ def init_db() -> None:
 
             -- Daily sell actions output
             CREATE TABLE IF NOT EXISTS sell_actions_daily (
-                ticker      TEXT NOT NULL,
-                date        TEXT NOT NULL,
-                action      TEXT,
-                new_stop    REAL,
-                sell_pct    REAL,
-                rationale   TEXT,
+                ticker          TEXT NOT NULL,
+                date            TEXT NOT NULL,
+                action          TEXT,
+                current_price   REAL,
+                entry_price     REAL,
+                current_stop    REAL,
+                new_stop        REAL,
+                sell_pct        REAL,
+                current_r       REAL,
+                rationale       TEXT,
                 PRIMARY KEY (ticker, date)
             );
 
@@ -128,4 +132,24 @@ def init_db() -> None:
                 last_updated TEXT NOT NULL
             );
         """)
+
+    # --- Schema migrations for existing databases ---
+    _migrate_sell_actions(conn)
+
     conn.close()
+
+
+def _migrate_sell_actions(conn: sqlite3.Connection):
+    """Add missing columns to sell_actions_daily if upgrading from older schema."""
+    cursor = conn.execute("PRAGMA table_info(sell_actions_daily)")
+    existing_cols = {row[1] for row in cursor.fetchall()}
+    new_cols = {
+        "current_price": "REAL",
+        "entry_price": "REAL",
+        "current_stop": "REAL",
+        "current_r": "REAL",
+    }
+    for col, dtype in new_cols.items():
+        if col not in existing_cols:
+            conn.execute(f"ALTER TABLE sell_actions_daily ADD COLUMN {col} {dtype}")
+    conn.commit()

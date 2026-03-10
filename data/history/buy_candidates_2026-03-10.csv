@@ -1,0 +1,11 @@
+ticker,date,entry_price,stop_price,target_price,shares,risk_pct,r_multiple_target,score,rationale,sector
+CTRE,2026-03-10,39.45,38.05,42.25,714,1.0,2.0,1.0,"trend=uptrend | rsi=54.2 | pullback=3.0% | flags=[pullback_ok,rsi_reset,above_ma50,above_ma200] | fund_score=0.87",Real Estate
+SNDK,2026-03-10,571.27,493.67,726.48,12,1.0,2.0,1.0,"trend=uptrend | rsi=52.0 | pullback=11.7% | flags=[pullback_ok,rsi_reset,above_ma50,above_ma200] | fund_score=0.87",Technology
+TPR,2026-03-10,146.55,137.97,163.71,116,1.0,2.0,1.0,"trend=uptrend | rsi=46.8 | pullback=9.3% | flags=[pullback_ok,rsi_reset,above_ma50,above_ma200] | fund_score=0.83",Consumer Discretionary
+FAF,2026-03-10,65.6,62.53,71.75,325,1.0,2.0,1.0,"trend=uptrend | rsi=47.4 | pullback=5.6% | flags=[pullback_ok,rsi_reset,above_ma50,above_ma200] | fund_score=0.88",Finance
+WT,2026-03-10,16.3,15.29,18.32,990,1.0,2.0,1.0,"trend=uptrend | rsi=51.9 | pullback=5.3% | flags=[pullback_ok,rsi_reset,above_ma50,above_ma200] | fund_score=0.89",Finance
+TER,2026-03-10,292.6,263.75,350.29,34,1.0,2.0,1.0,"trend=uptrend | rsi=50.5 | pullback=13.5% | flags=[pullback_ok,rsi_reset,above_ma50,above_ma200] | fund_score=0.87",Industrials
+NVST,2026-03-10,27.13,25.53,30.33,625,1.0,2.0,1.0,"trend=uptrend | rsi=43.9 | pullback=11.8% | flags=[pullback_ok,rsi_reset,above_ma50,above_ma200] | fund_score=0.79",Health Care
+CIEN,2026-03-10,305.14,267.83,379.77,26,1.0,2.0,1.0,"trend=uptrend | rsi=53.8 | pullback=9.9% | flags=[pullback_ok,rsi_reset,above_ma50,above_ma200] | fund_score=0.83",Utilities
+PEN,2026-03-10,337.71,332.16,348.81,180,1.0,2.0,1.0,"trend=uptrend | rsi=49.4 | pullback=1.4% | flags=[pullback_ok,rsi_reset,above_ma50,above_ma200] | fund_score=0.78",Health Care
+BBT,2026-03-10,29.25,27.63,32.49,617,1.0,2.0,1.0,"trend=uptrend | rsi=43.6 | pullback=8.4% | flags=[pullback_ok,rsi_reset,above_ma50,above_ma200] | fund_score=0.79",Finance

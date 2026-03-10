@@ -30,7 +30,24 @@ from storage import (
 )
 from engines.technicals import compute_technicals
 from engines import buy_engine, sell_engine
+from storage import signal_repository
 from config import UNIVERSE_TICKERS, INDEX_TICKERS, DATA_DIR
+
+# Sector lookup from universe CSV (for buy candidate enrichment)
+_UNIVERSE_CSV = Path(DATA_DIR) / "universe_tickers.csv"
+
+
+def _load_sector_map() -> dict:
+    """Load ticker -> sector mapping from universe CSV."""
+    if not _UNIVERSE_CSV.exists():
+        return {}
+    try:
+        import csv
+        with open(_UNIVERSE_CSV, newline="") as f:
+            reader = csv.DictReader(f)
+            return {row["ticker"]: row.get("sector", "Unknown") for row in reader if row.get("ticker")}
+    except Exception:
+        return {}
 
 
 def _market_context(index_df) -> dict:
@@ -132,8 +149,13 @@ def run():
         earnings_calendar=earnings_df if not earnings_df.empty else None,
     )
     if not candidates.empty:
+        # Enrich with sector data
+        sector_map = _load_sector_map()
+        candidates["sector"] = candidates["ticker"].map(sector_map).fillna("Unknown")
         candidates.to_csv(f"{DATA_DIR}/buy_candidates_daily.csv", index=False)
-        print(f"[daily] {len(candidates)} buy candidate(s) found.")
+        signal_repository.save_buy_candidates(candidates)
+        signal_repository.archive_csv(candidates, "buy_candidates")
+        print(f"[daily] {len(candidates)} buy candidate(s) found and persisted.")
     else:
         print("[daily] No buy candidates today.")
 
@@ -147,7 +169,9 @@ def run():
     )
     if not actions.empty:
         actions.to_csv(f"{DATA_DIR}/sell_actions_daily.csv", index=False)
-        print(f"[daily] {len(actions)} sell action(s) generated.")
+        signal_repository.save_sell_actions(actions)
+        signal_repository.archive_csv(actions, "sell_actions")
+        print(f"[daily] {len(actions)} sell action(s) generated and persisted.")
     else:
         print("[daily] No sell actions today.")
 
